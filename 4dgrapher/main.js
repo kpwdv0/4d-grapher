@@ -84,14 +84,31 @@ const ui = {
 ui.colSurf.addEventListener("input", e => mat.color.set(e.target.value))
 ui.colBg.addEventListener("input", e => scn.background.set(e.target.value))
 
-// compile the user's string into an actual function
-// handles ^ exponents and injects Math.* for things like sin/cos
+// compile the user's string into an actual function.
+// handles:
+//   ^ for exponents
+//   |expr| for absolute value
+//   π for pi
+//   any Math fn or constant (sin, cos, abs, max, sqrt, log, pi, e, ...)
+//   case-insensitive, so PI/pi and SQRT2/sqrt2 both work
 function makeFn(s) {
   try {
-    let c = s.toLowerCase().replace(/\^/g, "**")
+    let c = s.toLowerCase()
+      .replace(/\^/g, "**")
+      .replace(/π/g, "Math.PI")
+
+    // turn |expr| pairs into abs(expr). odd-indexed pipes open,
+    // even-indexed close. write plain abs() so the Math loop below
+    // wraps it once (otherwise we'd end up with Math.Math.abs).
+    // doesn't handle nested |a|b|| but that's rare, and abs() works.
+    let pipeIdx = 0
+    c = c.replace(/\|/g, () => (pipeIdx++ % 2 === 0) ? "abs(" : ")")
+
+    // wrap any Math property name (functions and constants) with Math.
     Object.getOwnPropertyNames(Math).forEach(n => {
-      c = c.replace(new RegExp(`\\b${n}\\b`, "g"), `Math.${n}`)
+      c = c.replace(new RegExp(`\\b${n}\\b`, "gi"), `Math.${n}`)
     })
+
     const f = new Function("x", "y", "z", "w", `return ${c}`)
     f(0, 0, 0, 0) // test call, catches bad syntax early
     ui.inp.classList.remove("error")

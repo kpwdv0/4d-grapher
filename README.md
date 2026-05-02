@@ -83,6 +83,21 @@ npm run dev
 
 opens at `localhost:5173`. type an equation in the input or grab a preset from the dropdown. scroll on the viewport to zoom (it scales the view range, not the camera distance). drag to orbit. the w slider sweeps through 4d slices, the xw/yw/zw sliders rotate in the planes that touch the 4th axis.
 
+## equation syntax
+
+variables: `x`, `y`, `z`, `w`. case insensitive.
+
+| you can write           | what it means                  |
+| ----------------------- | ------------------------------ |
+| `x^2`                   | x squared                      |
+| `\|x\|`                 | absolute value of x            |
+| `sin(x)`, `cos(x)`, ... | trig functions                 |
+| `sqrt(x)`, `log(x)`, `exp(x)`, `abs(x)`, `max(...)`, `min(...)` | the obvious thing |
+| `pi`, `π`               | π (3.14159...)                 |
+| `e`                     | e (2.71828...)                 |
+
+anything from JavaScript's [Math object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math) works, so `atan2`, `hypot`, `cbrt`, `sinh`, etc are all fair game.
+
 ## license
 
 MIT. do whatever you want with it.
