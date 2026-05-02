@@ -8,13 +8,14 @@ const cfg = { res: 50, box: 30, col: 0xff66cc, bg: 0x000000 }
 const scn = new THREE.Scene()
 scn.background = new THREE.Color(cfg.bg)
 
-const cam = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000)
+const viewport = document.getElementById("viewport")
+const cam = new THREE.PerspectiveCamera(50, viewport.clientWidth / viewport.clientHeight, 0.1, 1000)
 cam.position.set(45, 35, 45)
 
 const rndr = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" })
-rndr.setSize(window.innerWidth, window.innerHeight)
+rndr.setSize(viewport.clientWidth, viewport.clientHeight)
 rndr.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-document.body.appendChild(rndr.domElement)
+viewport.appendChild(rndr.domElement)
 
 const ctrls = new OrbitControls(cam, rndr.domElement)
 ctrls.enableDamping = true
@@ -78,11 +79,88 @@ const ui = {
     zw: document.getElementById("val-zw")
   },
   colSurf: document.getElementById("col-surface"),
-  colBg: document.getElementById("col-bg")
+  pause: {
+    iso: document.getElementById("pause-iso"),
+    wPos: document.getElementById("pause-w-pos"),
+    xw: document.getElementById("pause-xw"),
+    yw: document.getElementById("pause-yw"),
+    zw: document.getElementById("pause-zw"),
+    all: document.getElementById("pause-all")
+  }
 }
 
 ui.colSurf.addEventListener("input", e => mat.color.set(e.target.value))
-ui.colBg.addEventListener("input", e => scn.background.set(e.target.value))
+
+// animation state. each slider has its own on/off flag; pause-all is just
+// a shortcut that flips them together. rotations wrap (0 to 2pi loop),
+// iso and w-pos ping-pong off the ends.
+const SLIDERS = ["iso", "wPos", "xw", "yw", "zw"]
+const anim = {
+  on: { iso: false, wPos: false, xw: false, yw: false, zw: false },
+  speed: { iso: 12, wPos: 6, xw: 1.0, yw: 1.3, zw: 1.6 },
+  dir: { iso: 1, wPos: 1, xw: 1, yw: 1, zw: 1 },
+  wrap: { iso: false, wPos: false, xw: true, yw: true, zw: true }
+}
+
+const PLAY = "▶"
+const PAUSE = "⏸"
+
+function refreshPauseUI() {
+  for (const k of SLIDERS) {
+    ui.pause[k].textContent = anim.on[k] ? PAUSE : PLAY
+    ui.pause[k].classList.toggle("paused", !anim.on[k])
+  }
+  const anyPlaying = SLIDERS.some(k => anim.on[k])
+  ui.pause.all.textContent = anyPlaying ? `${PAUSE} pause all` : `${PLAY} play all`
+}
+
+for (const k of SLIDERS) {
+  ui.pause[k].addEventListener("click", () => {
+    anim.on[k] = !anim.on[k]
+    refreshPauseUI()
+  })
+}
+
+ui.pause.all.addEventListener("click", () => {
+  const anyPlaying = SLIDERS.some(k => anim.on[k])
+  for (const k of SLIDERS) anim.on[k] = !anyPlaying
+  refreshPauseUI()
+})
+
+let lastT = performance.now()
+
+// advance any animating sliders by dt seconds. returns true if anything moved
+// so the render loop knows whether to rebuild the surface.
+function tickAnim() {
+  const now = performance.now()
+  const dt = Math.min((now - lastT) / 1000, 0.1)
+  lastT = now
+
+  let changed = false
+  for (const k of SLIDERS) {
+    if (!anim.on[k]) continue
+    const sl = ui.sl[k]
+    const min = parseFloat(sl.min), max = parseFloat(sl.max)
+    let v = parseFloat(st[k])
+
+    const step = anim.speed[k] * dt
+    if (anim.wrap[k]) {
+      v += step
+      if (v > max) v -= (max - min)
+      if (v < min) v += (max - min)
+    } else {
+      v += step * anim.dir[k]
+      if (v >= max) { v = max; anim.dir[k] = -1 }
+      if (v <= min) { v = min; anim.dir[k] = 1 }
+    }
+
+    st[k] = v
+    sl.value = v
+    ui.out[k].innerText = v.toFixed(2)
+    changed = true
+  }
+  return changed
+}
 
 // compile the user's string into an actual function.
 // handles:
@@ -177,11 +255,16 @@ ui.inp.addEventListener("input", () => {
   }, 300)
 })
 
-// wire up all the sliders at once
+// wire up all the sliders at once. dragging a slider auto-pauses its
+// animation so user input doesn't immediately get overridden.
 Object.keys(ui.sl).forEach(k => {
   ui.sl[k].addEventListener("input", e => {
     st[k] = e.target.value
     ui.out[k].innerText = st[k]
+    if (anim.on[k]) {
+      anim.on[k] = false
+      refreshPauseUI()
+    }
     rebuild()
   })
 })
@@ -189,21 +272,26 @@ Object.keys(ui.sl).forEach(k => {
 ui.pre.addEventListener("change", e => {
   ui.inp.value = e.target.value
   st.fn = makeFn(ui.inp.value)
+  // play all sliders on preset load
+  for (const k of SLIDERS) anim.on[k] = true
+  refreshPauseUI()
   rebuild()
 })
 
 window.addEventListener("resize", () => {
-  cam.aspect = window.innerWidth / window.innerHeight
+  cam.aspect = viewport.clientWidth / viewport.clientHeight
   cam.updateProjectionMatrix()
-  rndr.setSize(window.innerWidth, window.innerHeight)
+  rndr.setSize(viewport.clientWidth, viewport.clientHeight)
 })
 
 function loop() {
   requestAnimationFrame(loop)
+  if (tickAnim()) rebuild()
   ctrls.update()
   rndr.render(scn, cam)
 }
 
+refreshPauseUI()
 st.fn = makeFn(ui.inp.value)
 rebuild()
 loop()

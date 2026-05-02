@@ -23,22 +23,28 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
         Roboto, Helvetica, Arial, sans-serif;
       color: var(--text-color);
+      display: flex;
+      height: 100vh;
     }
 
     #ui-container {
-      position: absolute;
-      top: 20px;
-      left: 20px;
       width: 320px;
-      max-height: 90vh;
+      flex-shrink: 0;
+      height: 100vh;
       overflow-y: auto;
       background: var(--panel-bg);
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.7);
+      border-right: 1px solid #333;
       padding: 20px;
+      box-sizing: border-box;
       display: flex;
       flex-direction: column;
       gap: 15px;
+    }
+
+    #viewport {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
     }
 
     h1 {
@@ -77,9 +83,53 @@
 
     .slider-row {
       display: grid;
-      grid-template-columns: 30px 1fr 40px;
+      grid-template-columns: 30px 1fr 40px 22px;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
+    }
+
+    .slider-pause {
+      background: transparent;
+      border: 1px solid var(--input-border);
+      border-radius: 3px;
+      color: var(--subtle-text);
+      font-size: 0.7rem;
+      padding: 0;
+      cursor: pointer;
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+
+    .slider-pause:hover {
+      color: var(--text-color);
+      border-color: var(--text-color);
+    }
+
+    .slider-pause.paused {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .pause-all-btn {
+      width: 100%;
+      padding: 8px;
+      border-radius: 4px;
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      color: var(--text-color);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .pause-all-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
     }
 
     .slider-label { font-weight: bold; }
@@ -130,6 +180,7 @@
       border-top: 1px solid #444;
       margin: 10px 0;
     }
+
   </style>
 </head>
 
@@ -142,6 +193,10 @@
       <div style="font-size:0.8rem; color:var(--subtle-text); margin-top:8px; line-height:1.4;">
         This tool shows a 2D projection of a 4D shape. Rotate it along different axes to see how higher-dimensional structure appears in lower dimensions.
       </div>
+    </div>
+
+    <div class="input-group">
+      <button id="pause-all" class="pause-all-btn">&#9654; play all</button>
     </div>
 
     <div class="input-group">
@@ -172,6 +227,7 @@
         <span class="slider-label">c</span>
         <input id="iso" type="range" min="-50" max="50" step="0.1" value="0">
         <span class="val-display" id="val-iso">0</span>
+        <button class="slider-pause" id="pause-iso" title="pause">&#9656;</button>
       </div>
     </div>
 
@@ -181,6 +237,7 @@
         <span class="slider-label w-axis">w</span>
         <input id="w-pos" type="range" min="-20" max="20" step="0.1" value="0">
         <span class="val-display" id="val-w-pos">0</span>
+        <button class="slider-pause" id="pause-w-pos" title="pause">&#9656;</button>
       </div>
     </div>
 
@@ -191,18 +248,21 @@
         <span class="slider-label x-axis">xw</span>
         <input id="xw" type="range" min="0" max="6.28" step="0.01" value="0">
         <span class="val-display" id="val-xw">0</span>
+        <button class="slider-pause" id="pause-xw" title="pause">&#9656;</button>
       </div>
 
       <div class="slider-row">
         <span class="slider-label y-axis">yw</span>
         <input id="yw" type="range" min="0" max="6.28" step="0.01" value="0">
         <span class="val-display" id="val-yw">0</span>
+        <button class="slider-pause" id="pause-yw" title="pause">&#9656;</button>
       </div>
 
       <div class="slider-row">
         <span class="slider-label z-axis">zw</span>
         <input id="zw" type="range" min="0" max="6.28" step="0.01" value="0">
         <span class="val-display" id="val-zw">0</span>
+        <button class="slider-pause" id="pause-zw" title="pause">&#9656;</button>
       </div>
     </div>
 
@@ -215,18 +275,16 @@
     </div>
 
     <div class="input-group">
-      <label>colors</label>
+      <label>color</label>
       <div class="color-row">
         <span style="font-size:0.85rem;color:var(--subtle-text);">surface</span>
         <input id="col-surface" type="color" value="#ff66cc">
       </div>
-      <div class="color-row">
-        <span style="font-size:0.85rem;color:var(--subtle-text);">bg</span>
-        <input id="col-bg" type="color" value="#000000">
-      </div>
     </div>
 
   </div>
+
+  <div id="viewport"></div>
 
   <script type="module" src="/main.js"></script>
 </body>
